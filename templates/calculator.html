@@ -1,10 +1,219 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 320px;
+        }
+        h2 {
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 15px 0;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            text-align: center;
+            text-align-last: center;
+        }
+        input:focus, select:focus {
+            border-color: #007BFF;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .error-border {
+            border-color: red !important;
+            box-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+        }
+        :root {
+            --bg-color: #f4f4f4;
+            --text-color: #000;
+            --form-bg: white;
+            --button-bg: #007bff;
+            --button-text: white;
+        }
+        .dark-mode {
+            --bg-ccolor: #222;
+            --text-color: #fff;
+            --form-bg: #333;
+            --buttong-bg: #ff9800;
+            --button-text: #222;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .container {
+            background: var(--form-bg);
+        }
+        button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: darken(var(--button-bg), 10%);
+        }
+        #theme-toggle {
+            width: 20%;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            cursor: pointer;
+            transition: background-color 0.3s;
+            z-index: 1000;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulačka</title>
 </head>
 <body>
+    <div class="container">
+        <h2>Jednoduchá kalkulačka</h2>
+        <form method="post">
+            {% csrf_token %}
+            <label for="num1">První číslo:</label>
+            <input type="number" name="num1" step="any" required>
+    
+            <label for="operation">Operace:</label>
+            <select name="operation">
+                <option value="add">➕ Sčítání</option>
+                <option value="subtract">➖ Odčítání</option>
+                <option value="multiply">✖️ Násobení</option>
+                <option value="divide">➗ Dělení</option>
+                <option value="power">^ Mocnina</option> <!-- Mocnina -->
+                <option value="sqrt">√ Odmocnina</option> <!-- Odmocnina -->
+                <option value="percent">% Procenta</option> <!-- Procenta -->
+            </select>
+            
+            <label for="num2">Druhé číslo:</label>
+            <input type="number" name="num2" step="any" required>
+            
+            <button type="submit">Vypočítat</button>
+        </form>
+        
+        {% if error_message %}
+            <p class="error">{{ error_message }}</p>
+        {% endif %}
+    
+        {% if result is not None %}
+            <h3>Výsledek: {{ result }}</h3>
+        {% endif %}
+    </div>
+    <button id="theme-toggle">🌙 Přepnout režim</button>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $("form").on("submit", function(event) {
+            event.preventDefault(); // Zabráníme obnovení stránky
+            
+            var num1 = $("input[name='num1']").val();
+            var num2 = $("input[name='num2']").val();
+            var operation = $("select[name='operation']").val();
+            
+            $.ajax({
+                type: "POST",
+                url: "{% url 'calculator' %}",
+                data: {
+                    num1: num1,
+                    num2: num2,
+                    operation: operation,
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    console.log("Response: ", response) // Logování odpovědí ze serveru
+                    
+                    // Vymaže jakékoliv předchozí výsledky nebo chybové zprávy
+                    $(".error").remove();
+                    $("h3").remove();
+                    $("input, select").removeClass("error-border"); // Odstraní červené orámování
+                    
+                    if (response.result) {
+                        // Zobrazení výsledku s animací
+                        $("form").after("<h3 style='display: none;'>Výsledek: " + response.result + "</h3>")
+                        $("h3").fadeIn(500);
+                    } else if (response.error) {
+                        // Zobrazí chybovou hlášku + červené orámování vstupních polí
+                        $("form").after("<p class='error'>" + response.error + "</p>")
+                        $("input[name='num1'], input[name='num2']").addClass("error-border");
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.log("AJAX Error: ", status, error); // Pokud dojde k chybě při AJAXu
+                }
+            });
+        });
+        // Přepínání světlého/tmavého režimu
+        const themeToggle = $("#theme-toggle");
+        
+        if (localStorage.getItem("theme") == "dark") {
+            $("body").addClass("dark-mode");
+            themeToggle.text("☀️ Světlý režim");
+        }
+        
+        themeToggle.click(function() {
+            $("body").toggleClass("dark-mode");
+            if ($("body").hasClass("dark-mode")) {
+                localStorage.setItem("theme", "dark");
+                themeToggle.text("☀️ Světlý režim");
+            } else {
+                localStorage.setItem("theme", "light");
+                themeToggle.text("🌙 Tmavý režim")
+            }
+        });
+    });
+</script>
 </body>
 </html>
